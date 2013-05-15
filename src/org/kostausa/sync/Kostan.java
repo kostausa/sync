@@ -99,6 +99,16 @@ public class Kostan
     return _email;
   }
   
+  /**
+   * Accessor for conference
+   * 
+   * @return conference
+   */
+  public Conference getConference()
+  {
+    return _conference;
+  }
+  
   @Override
   public String toString()
   {
