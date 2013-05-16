@@ -3,11 +3,15 @@ package org.kostausa.sync;
 import java.io.FileInputStream;
 import java.util.Properties;
 
+import org.apache.log4j.Logger;
+
 import com.google.gdata.client.spreadsheet.SpreadsheetService;
 import com.google.gdata.util.ServiceException;
 
 public class GoogleServiceFactory 
 {
+  private static Logger LOG = Logger.getLogger(GoogleServiceFactory.class);
+
   private GoogleServiceFactory() {}
   
   public static SpreadsheetService createAuthenticatedService() 
@@ -27,6 +31,7 @@ public class GoogleServiceFactory
         throw new ServiceException("Failed to get user credentials");
       }
       
+      LOG.info("Logging in as " + username);
       service.setUserCredentials(username, password);
       service.setProtocolVersion(SpreadsheetService.Versions.V3);  
     }
