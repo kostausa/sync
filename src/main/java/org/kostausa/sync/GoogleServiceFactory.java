@@ -22,6 +22,14 @@ public class GoogleServiceFactory
 
   private GoogleServiceFactory() {}
   
+  /**
+   * Creates a SpreadsheetService and authenticates it
+   * The authentication property file (login.properties)
+   * should be located in /resources directory
+   * 
+   * @return authenticated spreadsheet
+   * @throws ServiceException
+   */
   public static SpreadsheetService createAuthenticatedService() 
     throws ServiceException
   {
