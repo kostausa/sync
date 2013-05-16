@@ -54,7 +54,7 @@ public class Kostan
     
     if (!Validator.isValidEmail(_email))
     {
-      throw new IncompleteRecordException("Invalid email format");
+      throw new IncompleteRecordException("Invalid email format: " + _email);
     }
     
     _conference = conference;

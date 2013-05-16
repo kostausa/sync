@@ -91,13 +91,14 @@ public class KostaSync
         
         person = new Kostan(Conference.INDIANAPOLIS, 
                             columns.getValue(nameKey),
-                            columns.getValue(emailKey),
-                            columns.getValue(genderKey));
+                            columns.getValue(genderKey),
+                            columns.getValue(emailKey));
       }
       
       catch (IncompleteRecordException e)
       {
-        LOG.warn("Skipping user");
+        LOG.warn("Skipping user: " + e.getMessage());
+        continue;
       }
       
       if (userStore.exists(person))
