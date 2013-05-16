@@ -8,8 +8,8 @@ package org.kostausa.sync;
  */
 public enum Conference 
 {
-  CHICAGO(0),         // 25-And Up 을 위한 대학원 및 청년 컨퍼런스
-  INDIANAPOLIS(1);    // 18-25세를 위한 학부생 컨퍼런스
+  CHICAGO(0),         // 25-And Up 대학원생과 청년들을 위한 집회
+  INDIANAPOLIS(1);    // 18-25세의 학부생들 중심 집회
   
   private final int _num;
   
@@ -22,4 +22,14 @@ public enum Conference
   {
     return _num;
   }
+  
+  @Override
+  public String toString()
+  {
+    String name = super.toString().toLowerCase();
+    String firstLetterCap = name.substring(0, 1).toUpperCase() + 
+                            name.substring(1);
+    
+    return firstLetterCap;
+  }  
 }
