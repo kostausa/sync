@@ -55,7 +55,7 @@ public class Kostan
     {
       throw new IncompleteRecordException("Incomplete record");
     }
-    
+        
     _name = name.trim();
     if (gender.equals("여"))
     {
@@ -66,6 +66,12 @@ public class Kostan
       _gender = "M";      
     }
     _email = email.toLowerCase().trim();
+    
+    if (!Validator.isValidEmail(_email))
+    {
+      throw new IncompleteRecordException("Invalid email format");
+    }
+    
     _conference = conference;
   }
   
