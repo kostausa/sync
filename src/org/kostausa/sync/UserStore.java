@@ -1,5 +1,6 @@
 package org.kostausa.sync;
 
+import java.io.FileInputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -12,35 +13,82 @@ import java.util.Set;
 
 import org.apache.log4j.Logger;
 
-
+/**
+ * Model for user store
+ * 
+ * @author Eun-Gyu Kim <eungyu.kim@gmail.com>
+ *
+ */
 public class UserStore 
 {
-  private final static Logger LOG = Logger.getLogger(UserStore.class);
+  private static Logger LOG = Logger.getLogger(UserStore.class);
   
   private static final String dbClass = "com.mysql.jdbc.Driver";
-  private static final String jdbcURI = "jdbc:mysql://localhost/kosta";
+  private static final String jdbcURI = "jdbc:mysql://localhost/";
     
   private final Properties _props;
   private final Conference _conference;
   
   private final Set<String> _keys;
+  private final String      _connectString;
   
+  /**
+   * Constructor 
+   * 
+   * @param conference which conference the store is modelling
+   * @throws SQLException
+   */
   public UserStore(Conference conference) throws SQLException
   {
-    _keys = new HashSet<String>();
-    _props = new Properties();
-    _props.put("user", "eungyu");
-    _props.put("password", "rladmsrb");
-    _conference = conference;
+    try
+    {
+      Properties props = new Properties();
+      props.load(new FileInputStream("resources/db.properties"));
+        
+      String db       = props.getProperty("mysql.db");
+      String username = props.getProperty("mysql.user");
+      String password = props.getProperty("mysql.pass");
+    
+      if (db == null || username == null || password == null)
+      {
+        throw new SQLException("Failed to get user credentials");
+      }
+
+      _connectString = jdbcURI + db;
+      
+      _keys = new HashSet<String>();
+      _props = new Properties();
+      _props.put("user", username);
+      _props.put("password", password);
+      _conference = conference;
+
+    } 
+    catch (Exception e)
+    {
+      throw new SQLException(e.getMessage());
+    }
     
     loadRecords();
   }
     
+  /**
+   * See if a person exist in the db already
+   * 
+   * @param person person represented by Kostan object
+   * @return true if person exists already, false otherwise.
+   *   the lookup is done by email as the key
+   */
   public boolean exists(Kostan person)  
   {
     return _keys.contains(person.getEmail());
   }
   
+  /**
+   * Persist the person in the database
+   * 
+   * @param kostan single person
+   * @throws SQLException
+   */  
   public void save(Kostan kostan) throws SQLException
   {
     Connection conn = null;
@@ -60,6 +108,7 @@ public class UserStore
     catch (Exception e)
     {
       LOG.error(e.getMessage());
+      throw new SQLException("Failed to insert record");
     }
     finally
     {
@@ -67,12 +116,27 @@ public class UserStore
     }
   }
   
+  /** 
+   * Create connection
+   * 
+   * @return a connection object
+   * 
+   * @throws ClassNotFoundException
+   * @throws SQLException
+   */
   private Connection getConnection() throws ClassNotFoundException, SQLException
   {
     Class.forName(dbClass);  
-    return DriverManager.getConnection(jdbcURI, _props);
+    return DriverManager.getConnection(_connectString, _props);
   }
   
+  /**
+   * Cleans up resources
+   * 
+   * @param conn connection
+   * @param statement statement
+   * @param results result set
+   */
   private void cleanup(Connection conn, Statement statement, ResultSet results)
   {
     try
@@ -96,6 +160,11 @@ public class UserStore
     }    
   }
   
+  /**
+   * Load configuration
+   * 
+   * @throws SQLException
+   */
   private void loadRecords() throws SQLException
   {
     LOG.info("Initializing records");
@@ -110,6 +179,9 @@ public class UserStore
       statement.setInt(1, _conference.getConfNum());
       
       records = statement.executeQuery();
+
+      int count = 0;
+      
       while (records.next())
       {
         String key = records.getString("email");
@@ -119,8 +191,14 @@ public class UserStore
         {
           continue;
         }        
+        count++;
         _keys.add(sanitizedKey);
       }
+      
+      StringBuilder stat = new StringBuilder();
+      stat.append("Loaded ").append(count).append(" records");
+      
+      LOG.info(stat.toString());
     }
     catch (Exception e)
     {
@@ -131,7 +209,5 @@ public class UserStore
       cleanup(conn, statement, records);
     }
   }
-  
-  
-  
+    
 }

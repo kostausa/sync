@@ -1,5 +1,6 @@
 package org.kostausa.sync;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URL;
 import java.sql.SQLException;
@@ -7,6 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
@@ -31,16 +33,15 @@ public class KostaSync
    * 
    * @param targetUrl target spreadsheet feed to connect to 
    * @throws ServiceException
+   * @throws IOException 
+   * @throws FileNotFoundException 
    */
-  public KostaSync(URL targetUrl) throws ServiceException
+  public KostaSync(URL targetUrl)
+    throws ServiceException
   {
-    String username = "eungyu.kim@gmail.com";
-    String password = "yumndfajucxhcssl";
-  
-    _service = new SpreadsheetService("eungyu-spreadsheet");
-    _service.setUserCredentials(username, password);
-    _service.setProtocolVersion(SpreadsheetService.Versions.V3);  
-
+    // the dirty work of authenticating is hidden to a factory
+    _service = GoogleServiceFactory.createAuthenticatedService();
+    
     _keymap = new HashMap<String, String>();
     _keymap.put(Kostan.NAME_COLUMN, "성명한글");
     _keymap.put(Kostan.GENDER_COLUMN, "성별");
@@ -69,6 +70,7 @@ public class KostaSync
     
     UserStore userStore = new UserStore(Conference.INDIANAPOLIS);
     
+    int count = 0;
     for (ListEntry entry : records.getEntries())
     {
       Kostan person = null;
@@ -85,11 +87,22 @@ public class KostaSync
       {
         continue;
       }
+          
+      try
+      {
+        userStore.save(person);
+      }
+      catch (SQLException e)
+      {
+        LOG.warn("Failed to insert record " + person.toString());
+        continue;
+      }
       
-      userStore.save(person);
-      
+      count++;
       LOG.info("Saved " + person.toString());
     }    
+    
+    LOG.info("Added " + count + " new records");
   }
 
   /**
@@ -101,8 +114,12 @@ public class KostaSync
    */
   public static void main(String[] args) throws IOException, ServiceException
   {
+    BasicConfigurator.configure();
     LOG.setLevel(Level.INFO);
 
+    LOG.info("=============");
+    LOG.info("Starting Sync");
+    
     URL indyUrl = 
         new URL("https://spreadsheets.google.com/feeds/spreadsheets/tyeT6YZgHyssi7AA9AAsQEw");
     
