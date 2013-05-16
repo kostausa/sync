@@ -79,8 +79,24 @@ public class TestKostan
 
     exception.expect(IncompleteRecordException.class);
     Kostan person3 = new Kostan(Conference.INDIANAPOLIS, _name, _gender, "asdf@asdf");        
+
+    exception.expect(IncompleteRecordException.class);
+    Kostan person4 = new Kostan(Conference.INDIANAPOLIS, _name, _gender, "asdf@한글");          
+
+    exception.expect(IncompleteRecordException.class);
+    Kostan person5 = new Kostan(Conference.INDIANAPOLIS, _name, _gender, "asdf.hello@hello.e");            
   }
 
+  @Test
+  public void testValidEmails() throws IncompleteRecordException
+  {
+    Kostan person1 = new Kostan(Conference.INDIANAPOLIS, _name, _gender, "web.team@kostausa.org");    
+    assertEquals(person1.getEmail(), "web.team@kostausa.org");
+    
+    Kostan person2 = new Kostan(Conference.INDIANAPOLIS, _name, _gender, "web@kosta.us");    
+    assertEquals(person2.getEmail(), "web@kosta.us");
+  }
+  
   @Test
   public void testTrim() throws IncompleteRecordException
   {
