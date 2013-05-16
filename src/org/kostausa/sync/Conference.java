@@ -1,7 +1,7 @@
 package org.kostausa.sync;
 
 /**
- * Two conferences
+ * Represents each conference
  * 
  * @author eungyu
  *
