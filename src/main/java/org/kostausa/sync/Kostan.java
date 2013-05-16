@@ -1,10 +1,5 @@
 package org.kostausa.sync;
 
-import java.util.Map;
-
-import com.google.gdata.data.spreadsheet.CustomElementCollection;
-import com.google.gdata.data.spreadsheet.ListEntry;
-
 /**
  * Class to represent a single person attending KOSTA
  * 
@@ -30,25 +25,9 @@ public class Kostan
    * @param keymap a map which maps key type to the actual column name
    * @throws IncompleteRecordException
    */
-  public Kostan(Conference conference, ListEntry entry, Map<String, String> keymap)
+  public Kostan(Conference conference, String name, String gender, String email)
     throws IncompleteRecordException
-  {
-    String nameKey = keymap.get(NAME_COLUMN);
-    String emailKey = keymap.get(EMAIL_COLUMN);
-    String genderKey = keymap.get(GENDER_COLUMN);
-    
-    if (nameKey == null ||
-        emailKey == null ||
-        genderKey == null)
-    {
-      throw new IncompleteRecordException("Keymap does not contain required fields");
-    }
-    
-    CustomElementCollection columns = entry.getCustomElements();
-    String name = columns.getValue(nameKey);
-    String email = columns.getValue(emailKey);
-    String gender = columns.getValue(genderKey);
-    
+  {        
     if (name == null ||
         email == null ||
         gender == null)
@@ -56,7 +35,13 @@ public class Kostan
       throw new IncompleteRecordException("Incomplete record");
     }
         
-    _name = name.trim();
+    _name = name.trim().replaceAll("\\s", "");
+    if (_name.equals(""))
+    {
+      throw new IncompleteRecordException("empty name");      
+    }
+    
+    gender = gender.trim();
     if (gender.equals("여"))
     {
       _gender = "F";
@@ -65,7 +50,7 @@ public class Kostan
     {
       _gender = "M";      
     }
-    _email = email.toLowerCase().trim();
+    _email = email.trim().toLowerCase();
     
     if (!Validator.isValidEmail(_email))
     {

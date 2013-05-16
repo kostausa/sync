@@ -13,6 +13,7 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
 import com.google.gdata.client.spreadsheet.SpreadsheetService;
+import com.google.gdata.data.spreadsheet.CustomElementCollection;
 import com.google.gdata.data.spreadsheet.ListEntry;
 import com.google.gdata.data.spreadsheet.ListFeed;
 import com.google.gdata.data.spreadsheet.SpreadsheetEntry;
@@ -82,8 +83,18 @@ public class KostaSync
       Kostan person = null;
       try
       {
-        person = new Kostan(Conference.INDIANAPOLIS, entry, _keymap);
+        String nameKey = _keymap.get(Kostan.NAME_COLUMN);
+        String emailKey = _keymap.get(Kostan.EMAIL_COLUMN);
+        String genderKey = _keymap.get(Kostan.GENDER_COLUMN);
+
+        CustomElementCollection columns = entry.getCustomElements();
+        
+        person = new Kostan(Conference.INDIANAPOLIS, 
+                            columns.getValue(nameKey),
+                            columns.getValue(emailKey),
+                            columns.getValue(genderKey));
       }
+      
       catch (IncompleteRecordException e)
       {
         LOG.warn("Skipping user");
