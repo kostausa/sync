@@ -3,3 +3,7 @@
 .settings
 bin
 lib
+*.class
+*.jar
+*.war
+*.ear
