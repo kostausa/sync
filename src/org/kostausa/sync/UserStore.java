@@ -16,7 +16,7 @@ import org.apache.log4j.Logger;
 /**
  * Model for user store
  * 
- * @author Eun-Gyu Kim <eungyu.kim@gmail.com>
+ * @author eungyu
  *
  */
 public class UserStore 

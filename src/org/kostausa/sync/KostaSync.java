@@ -20,6 +20,12 @@ import com.google.gdata.data.spreadsheet.WorksheetEntry;
 import com.google.gdata.data.spreadsheet.WorksheetFeed;
 import com.google.gdata.util.ServiceException;
 
+/**
+ * Sync Service between KOSTA Database and Google
+ * 
+ * @author eungyu
+ *
+ */
 public class KostaSync 
 { 
   private final static Logger LOG = Logger.getLogger(KostaSync.class);

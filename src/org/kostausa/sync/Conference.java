@@ -1,5 +1,11 @@
 package org.kostausa.sync;
 
+/**
+ * Two conferences
+ * 
+ * @author eungyu
+ *
+ */
 public enum Conference 
 {
   CHICAGO(0),

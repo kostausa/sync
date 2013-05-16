@@ -8,6 +8,14 @@ import org.apache.log4j.Logger;
 import com.google.gdata.client.spreadsheet.SpreadsheetService;
 import com.google.gdata.util.ServiceException;
 
+/**
+ * Static factory method to create
+ * an authenticated google service
+ * (does all the dirty work)
+ * 
+ * @author eungyu
+ *
+ */
 public class GoogleServiceFactory 
 {
   private static Logger LOG = Logger.getLogger(GoogleServiceFactory.class);

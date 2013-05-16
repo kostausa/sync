@@ -3,7 +3,7 @@ package org.kostausa.sync;
 /**
  * Exception to represent incomplete record
  * 
- * @author Eun-Gyu Kim <eungyu.kim@gmail.com>
+ * @author eungyu
  *
  */
 public class IncompleteRecordException extends Exception 

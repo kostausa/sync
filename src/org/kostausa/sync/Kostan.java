@@ -8,7 +8,7 @@ import com.google.gdata.data.spreadsheet.ListEntry;
 /**
  * Class to represent a single person attending KOSTA
  * 
- * @author Eun-Gyu Kim <eungyu.kim@gmail.com>
+ * @author eungyu
  *
  */
 public class Kostan 
