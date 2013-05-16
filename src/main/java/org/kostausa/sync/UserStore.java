@@ -11,8 +11,6 @@ import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
 
-import javax.mail.internet.InternetAddress;
-
 import org.apache.log4j.Logger;
 
 /**
