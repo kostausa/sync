@@ -4,9 +4,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URL;
 import java.sql.SQLException;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
@@ -17,6 +16,7 @@ import com.google.gdata.data.spreadsheet.CustomElementCollection;
 import com.google.gdata.data.spreadsheet.ListEntry;
 import com.google.gdata.data.spreadsheet.ListFeed;
 import com.google.gdata.data.spreadsheet.SpreadsheetEntry;
+import com.google.gdata.data.spreadsheet.SpreadsheetFeed;
 import com.google.gdata.data.spreadsheet.WorksheetEntry;
 import com.google.gdata.data.spreadsheet.WorksheetFeed;
 import com.google.gdata.util.ServiceException;
@@ -27,14 +27,14 @@ import com.google.gdata.util.ServiceException;
  * @author eungyu
  *
  */
-public class KostaSync 
+public class KostaSync
 { 
   private final static Logger LOG = Logger.getLogger(KostaSync.class);
   
   private final URL                _targetUrl;
-  private final SpreadsheetService _service;
-  private final Map<String, String> _keymap;
-  
+  private final SpreadsheetService _service;  
+  private final Conference         _conference;
+  private final List<ColumnMapper> _mappers;
   /**
    * Constructor
    * 
@@ -43,20 +43,27 @@ public class KostaSync
    * @throws IOException 
    * @throws FileNotFoundException 
    */
-  public KostaSync(URL targetUrl)
+  public KostaSync(Conference conference, URL targetUrl, List<ColumnMapper> mappers)
     throws ServiceException
   {
     // the dirty work of authenticating is hidden to a factory
-    _service = GoogleServiceFactory.createAuthenticatedService();
-    
-    _keymap = new HashMap<String, String>();
-    _keymap.put(Kostan.NAME_COLUMN, "성명한글");
-    _keymap.put(Kostan.GENDER_COLUMN, "성별");
-    _keymap.put(Kostan.EMAIL_COLUMN, "emailaddress");
-    
+    _service = GoogleServiceFactory.createAuthenticatedService();        
     _targetUrl = targetUrl;
+    _conference = conference;
+    _mappers = mappers;
   }
 
+  public void list() throws IOException, ServiceException
+  {
+    SpreadsheetFeed feed = _service.getFeed(new URL("https://spreadsheets.google.com/feeds/spreadsheets"), SpreadsheetFeed.class);
+  
+    for (SpreadsheetEntry entry : feed.getEntries())
+    {
+      LOG.info(entry.getTitle().getPlainText() + "/" + entry.getWorksheetFeedUrl());
+    }
+  }
+  
+  
   /**
    * Main loop of instantiating Kostan 
    * and syncing them with MySQL database
@@ -70,57 +77,101 @@ public class KostaSync
     SpreadsheetEntry spreadsheet = _service.getEntry(_targetUrl, SpreadsheetEntry.class);
     
     WorksheetFeed feed = _service.getFeed(spreadsheet.getWorksheetFeedUrl(), WorksheetFeed.class);
-    List<WorksheetEntry> worksheets = feed.getEntries();
+    List<WorksheetEntry> worksheets = feed.getEntries();    
     
-    WorksheetEntry worksheet = worksheets.get(0); // get the first
+    int worksheetIndex = 0;
+    if (_conference == Conference.CHICAGO)
+    {
+      worksheetIndex = 1;
+    }
+    
+    WorksheetEntry worksheet = worksheets.get(worksheetIndex); // get the first
     ListFeed records = _service.getFeed(worksheet.getListFeedUrl(), ListFeed.class);
     
-    UserStore userStore = new UserStore(Conference.INDIANAPOLIS);
+    UserStore userStore = new UserStore(_conference);
     
     int count = 0;
+    String trackKey = null;
+    
     for (ListEntry entry : records.getEntries())
     {
       Kostan person = null;
-      try
+      
+      for (ColumnMapper mapper : _mappers)
       {
-        String nameKey = _keymap.get(Kostan.NAME_COLUMN);
-        String emailKey = _keymap.get(Kostan.EMAIL_COLUMN);
-        String genderKey = _keymap.get(Kostan.GENDER_COLUMN);
+        try
+        {
+          CustomElementCollection columns = entry.getCustomElements();
 
-        CustomElementCollection columns = entry.getCustomElements();
-        
-        person = new Kostan(Conference.INDIANAPOLIS, 
-                            columns.getValue(nameKey),
-                            columns.getValue(genderKey),
-                            columns.getValue(emailKey));
-      }
-      
-      catch (IncompleteRecordException e)
-      {
-        LOG.warn("Skipping user: " + e.getMessage());
-        continue;
-      }
-      
-      if (userStore.exists(person))
-      {
-        continue;
-      }
+          // lazily find out what the track column header is 
+          if (mapper.getTrackColumn() != null &&
+              trackKey == null)
+          {
+            for (String tag : columns.getTags())
+            {
+              if (tag.startsWith(mapper.getTrackColumn()))
+              {
+                trackKey = tag;
+              }
+            }          
+          }
           
-      try
-      {
-        userStore.save(person);
-      }
-      catch (SQLException e)
-      {
-        LOG.warn("Failed to insert record " + person.toString());
-        continue;
+          String name   = columns.getValue(mapper.getNameColumn());
+          String email  = columns.getValue(mapper.getEmailColumn());
+          String gender = columns.getValue(mapper.getGenderColumn());
+          String status = columns.getValue(mapper.getStatusColumn());
+          
+          String cancelKey = mapper.getCancelColumn();
+          if (cancelKey != null)
+          {
+            String cancel = columns.getValue(cancelKey);
+            if (cancel != null && cancel.equals("1"))
+            {
+              status = Kostan.Status.CANCELED.toString();
+            }
+          }
+
+          Integer auxId = null;
+          String auxKey = mapper.getAuxColumn();
+          if (auxKey != null)
+          {
+            String aux = columns.getValue(auxKey);
+            if (aux != null && !aux.equals(""))
+            {
+              auxId = Integer.valueOf(aux);
+            }
+          }
+          
+          String trackInfo = null;
+          if (trackKey != null)
+          {
+            trackInfo = columns.getValue(trackKey);
+          }
+          person = new Kostan(_conference, name, gender, email, status, auxId, trackInfo);          
+          LOG.info(person.toString());
+        }
+        catch (Exception e)
+        {
+          LOG.debug("Skipping user: " + e.getMessage());
+          continue;
+        }        
+
+        try
+        {
+          userStore.sync(person);
+        }
+        catch (SQLException e)
+        {
+          LOG.warn("Failed to sync record " + person.toString());
+          continue;
+        }
+
+        count++;
       }
       
-      count++;
-      LOG.info("Saved " + person.toString());
     }    
     
-    LOG.info("Added " + count + " new records");
+    LOG.info("Processed " + count + " new records");
   }
 
   /**
@@ -138,13 +189,40 @@ public class KostaSync
     LOG.info("=============");
     LOG.info("Starting Sync");
     
+    // TODO: make this config driven
+    
     URL indyUrl = 
         new URL("https://spreadsheets.google.com/feeds/spreadsheets/tyeT6YZgHyssi7AA9AAsQEw");
     
-    KostaSync sync = null;
+    URL chicagoUrl = 
+        new URL("https://spreadsheets.google.com/feeds/spreadsheets/tQuRx5nxqYDoqwoeqBGzv-g");
+    
+    
+    ColumnMapper indyMapper = new ColumnMapper("성명한글", "성별", "emailaddress", "paymentstatus");    
+    ColumnMapper chicagoMapper = new ColumnMapper("이름", "성별", "이메일주소", "paymentstatus");    
+    ColumnMapper chicagoSpouseMapper = new ColumnMapper("배우자이름", "배우자성별", "배우자이메일", "paymentstatus");
+
+    chicagoMapper.setCancelColumn("등록취소");
+    chicagoMapper.setAuxColumn("_cssly");
+    chicagoMapper.setTrackColumn("트랙선택");
+    
+    chicagoSpouseMapper.setCancelColumn("등록취소");
+    chicagoSpouseMapper.setAuxColumn("_cssly");
+    chicagoSpouseMapper.setTrackColumn("트랙선택");
+    
+    List<ColumnMapper> indyMapperList = new ArrayList<ColumnMapper>(1);
+    indyMapperList.add(indyMapper);
+    
+    List<ColumnMapper> chicagoMapperList = new ArrayList<ColumnMapper>(2);
+    chicagoMapperList.add(chicagoMapper);
+    chicagoMapperList.add(chicagoSpouseMapper);
+    
+    KostaSync indySync = null;
+    KostaSync chicagoSync = null;
     try
     {
-      sync = new KostaSync(indyUrl);
+      indySync = new KostaSync(Conference.INDIANAPOLIS, indyUrl, indyMapperList);
+      chicagoSync = new KostaSync(Conference.CHICAGO, chicagoUrl, chicagoMapperList);
     }
     catch (ServiceException e)
     {
@@ -154,7 +232,7 @@ public class KostaSync
   
     try
     {
-      sync.run();
+      indySync.run();
     }
     catch (Exception e)
     {
@@ -162,6 +240,18 @@ public class KostaSync
       LOG.error(e.getMessage());
       return;
     }    
+
+    try
+    {
+      chicagoSync.run();
+    }
+    catch (Exception e)
+    {
+      LOG.error("Sync process stopped abnormally");
+      LOG.error(e.getMessage());
+      return;
+    }    
+    
     
   }
 }

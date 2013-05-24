@@ -7,9 +7,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.HashSet;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 
 import org.apache.log4j.Logger;
 
@@ -29,7 +29,8 @@ public class UserStore
   private final Properties _props;
   private final Conference _conference;
   
-  private final Set<String> _keys;
+  private final Map<String, Integer> _keys;
+  
   private final String      _connectString;
   
   /**
@@ -56,7 +57,8 @@ public class UserStore
 
       _connectString = jdbcURI + db;
       
-      _keys = new HashSet<String>();
+      _keys = new HashMap<String, Integer>();
+      
       _props = new Properties();
       _props.put("user", username);
       _props.put("password", password);
@@ -71,25 +73,28 @@ public class UserStore
     loadRecords();
   }
   
-  /**
-   * See if a person exist in the db already
-   * 
-   * @param person person represented by Kostan object
-   * @return true if person exists already, false otherwise.
-   *   the lookup is done by email as the key
-   */
-  public boolean exists(Kostan person)  
+  public void sync(Kostan kostan) throws SQLException
   {
-    return _keys.contains(person.getEmail());
+    boolean exists = _keys.containsKey(kostan.getEmail());
+    Integer status = _keys.get(kostan.getEmail());
+
+    if (exists && status == kostan.getStatus().getNum())
+    {
+      // looks identical, pass
+      return;
+    }
+    
+    // otherwise sync
+    save(kostan, !exists); 
   }
   
   /**
-   * Persist the person in the database
+   * Sync the person in the database
    * 
    * @param kostan single person
    * @throws SQLException
    */  
-  public void save(Kostan kostan) throws SQLException
+  public void save(Kostan kostan, boolean isNew) throws SQLException
   {
     Connection conn = null;
     PreparedStatement statement = null;
@@ -97,13 +102,40 @@ public class UserStore
     try
     {
       conn = getConnection();
-      String query = "INSERT INTO user (kname, email, gender, conf) VALUES (?, ?, ?, ?)";      
+      String insertQuery = "INSERT INTO user (kname, email, gender, conf, status, optional_id) VALUES (?, ?, ?, ?, ?, ?)";
+      String updateQuery = "UPDATE user SET status = ?, optional_id = ? WHERE email = ?";
+      
+      String query = (isNew)?insertQuery:updateQuery;      
       statement = conn.prepareStatement(query);
-      statement.setString(1, kostan.getName());
-      statement.setString(2, kostan.getEmail());
-      statement.setString(3, kostan.getGender());
-      statement.setInt(4, kostan.getConference().getConfNum());
-      statement.execute();
+
+      int optional_id = 0;
+      if (kostan.getAuxId() != null)
+      {
+        optional_id = kostan.getAuxId().intValue();
+      }
+      
+      if (isNew) 
+      {      
+        statement.setString(1, kostan.getName());
+        statement.setString(2, kostan.getEmail());
+        statement.setString(3, kostan.getGender());
+        statement.setInt(4, kostan.getConference().getConfNum());
+        statement.setInt(5, kostan.getStatus().getNum());        
+        statement.setInt(6, optional_id);
+        
+        LOG.info("INSERTED: " + kostan);
+      }
+      else
+      {
+        statement.setInt(1, kostan.getStatus().getNum());
+        statement.setInt(2, optional_id);
+        statement.setString(3, kostan.getEmail());
+        
+        LOG.info("UPDATED: " + kostan);
+      }
+      statement.execute();  
+      
+      _keys.put(kostan.getEmail(), kostan.getStatus().getNum());
     }
     catch (Exception e)
     {
@@ -175,7 +207,7 @@ public class UserStore
     try
     {
       conn = getConnection();
-      statement = conn.prepareStatement("SELECT email FROM user WHERE conf = ?");
+      statement = conn.prepareStatement("SELECT email, status FROM user WHERE conf = ?");
       statement.setInt(1, _conference.getConfNum());
       
       records = statement.executeQuery();
@@ -187,12 +219,14 @@ public class UserStore
         String key = records.getString("email");
         String sanitizedKey = key.trim().toLowerCase();
         
-        if (_keys.contains(sanitizedKey))
+        if (_keys.containsKey(sanitizedKey))
         {
           continue;
         }        
         count++;
-        _keys.add(sanitizedKey);
+
+        Integer status = records.getInt("status");
+        _keys.put(sanitizedKey, status);        
       }
       
       StringBuilder stat = new StringBuilder();
