@@ -93,9 +93,13 @@ public class Kostan
     {
       _track = Track.MINISTRY;
     }
-    else if (trackInfo.startsWith("기독교"))
+    else if (trackInfo.startsWith("기독교 세계관"))
     {
       _track = Track.WORLDVIEW;
+    }
+    else if (trackInfo.startsWith("기독교 문화관"))
+    {
+      _track = Track.CULTURE;
     }
     else 
     {
@@ -210,6 +214,7 @@ public class Kostan
     JOURNEY('J'),
     THEME('T'),
     WORLDVIEW('W'),
+    CULTURE('C'),
     MINISTRY('M');
     
     private Character _shorthand;

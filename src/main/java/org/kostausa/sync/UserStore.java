@@ -102,8 +102,8 @@ public class UserStore
     try
     {
       conn = getConnection();
-      String insertQuery = "INSERT INTO user (kname, email, gender, conf, status, optional_id) VALUES (?, ?, ?, ?, ?, ?)";
-      String updateQuery = "UPDATE user SET status = ?, optional_id = ? WHERE email = ?";
+      String insertQuery = "INSERT INTO user (kname, email, gender, conf, status, track, optional_id) VALUES (?, ?, ?, ?, ?, ?, ?)";
+      String updateQuery = "UPDATE user SET status = ?, track = ?, optional_id = ? WHERE email = ?";
       
       String query = (isNew)?insertQuery:updateQuery;      
       statement = conn.prepareStatement(query);
@@ -120,16 +120,18 @@ public class UserStore
         statement.setString(2, kostan.getEmail());
         statement.setString(3, kostan.getGender());
         statement.setInt(4, kostan.getConference().getConfNum());
-        statement.setInt(5, kostan.getStatus().getNum());        
-        statement.setInt(6, optional_id);
+        statement.setInt(5, kostan.getStatus().getNum());  
+        statement.setString(6, kostan.getTrack().getShorthand().toString());
+        statement.setInt(7, optional_id);
         
         LOG.info("INSERTED: " + kostan);
       }
       else
       {
         statement.setInt(1, kostan.getStatus().getNum());
-        statement.setInt(2, optional_id);
-        statement.setString(3, kostan.getEmail());
+        statement.setString(2, kostan.getTrack().getShorthand().toString());
+        statement.setInt(3, optional_id);
+        statement.setString(4, kostan.getEmail());
         
         LOG.info("UPDATED: " + kostan);
       }

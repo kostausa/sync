@@ -148,7 +148,8 @@ public class KostaSync
             trackInfo = columns.getValue(trackKey);
           }
           person = new Kostan(_conference, name, gender, email, status, auxId, trackInfo);          
-          LOG.info(person.toString());
+          
+          LOG.debug(person.toString());
         }
         catch (Exception e)
         {
@@ -186,7 +187,7 @@ public class KostaSync
     BasicConfigurator.configure();
     LOG.setLevel(Level.INFO);
 
-    LOG.info("=============");
+    LOG.info("\n\n=============");
     LOG.info("Starting Sync");
     
     // TODO: make this config driven
