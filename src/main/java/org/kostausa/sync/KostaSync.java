@@ -10,6 +10,7 @@ import java.util.List;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
+import org.apache.log4j.PropertyConfigurator;
 
 import com.google.gdata.client.spreadsheet.SpreadsheetService;
 import com.google.gdata.data.spreadsheet.CustomElementCollection;
@@ -184,10 +185,9 @@ public class KostaSync
    */
   public static void main(String[] args) throws IOException, ServiceException
   {
-    BasicConfigurator.configure();
-    LOG.setLevel(Level.INFO);
+    PropertyConfigurator.configure("resources/log4j.properties");
 
-    LOG.info("\n\n=============");
+    LOG.info("=============");
     LOG.info("Starting Sync");
     
     // TODO: make this config driven
